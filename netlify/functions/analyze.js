@@ -17,17 +17,10 @@ exports.handler = async function (event, context) {
     const { answer, scenario } = data;
     const { objection, idealAnswer } = scenario;
 
-    // НОВИЙ, ПОКРАЩЕНИЙ ПРОМПТ
+    // ФІНАЛЬНИЙ, НАЙБІЛЬШ СУВОРИЙ ПРОМПТ
     const prompt = `
-      **Твоя Роль:** Ти - бізнес-тренер для логістичної компанії IVANCOM.
-      **Твоє Завдання:** Оцінити відповідь менеджера на заперечення клієнта.
-      **Формат Відповіді:** Тільки JSON.
-
-      **Критерії Оцінки:**
-      1. Емпатія: Чи виявлено розуміння почуттів клієнта?
-      2. Вирішення: Чи запропоновано чіткий план дій?
-      3. Тон: Чи був тон професійним та впевненим?
-      4. Знання: Чи показав менеджер знання процесів компанії?
+      **Твоя Роль:** Ти - API, яке повертає JSON.
+      **Твоє Завдання:** Оцінити відповідь менеджера на заперечення клієнта для компанії IVANCOM.
 
       --- ДАНІ ДЛЯ АНАЛІЗУ ---
       **Ситуація (Заперечення клієнта):**
@@ -40,7 +33,9 @@ exports.handler = async function (event, context) {
       "${answer}"
       --- КІНЕЦЬ ДАНИХ ---
 
-      Проаналізуй **"Відповідь менеджера"** за вказаними критеріями і надай результат у JSON форматі з полями "score" (число від 1 до 10), "strengths" (рядок), та "areasForImprovement" (рядок).
+      Проаналізуй **"Відповідь менеджера"** за критеріями (емпатія, вирішення, тон, знання).
+      **ВАЖЛИВО:** Твоя відповідь має бути ТІЛЬКИ валідним JSON-об'єктом. Без жодних пояснень, привітань чи тексту до або після. Починай відповідь одразу з символу '{'.
+      Структура JSON: { "score": число, "strengths": "рядок", "areasForImprovement": "рядок" }.
     `;
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -60,7 +55,14 @@ exports.handler = async function (event, context) {
     }
 
     const aiData = await apiResponse.json();
-    const analysisJsonString = aiData.candidates[0].content.parts[0].text.replace(/```json/g, "").replace(/```/g, "").trim();
+    const rawResponse = aiData.candidates[0].content.parts[0].text;
+
+    // ПОКРАЩЕНИЙ, "РОЗУМНИЙ" ПАРСИНГ
+    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("AI response did not contain a valid JSON object. Response was: " + rawResponse);
+    }
+    const analysisJsonString = jsonMatch[0];
     const analysisObject = JSON.parse(analysisJsonString);
 
     return {
