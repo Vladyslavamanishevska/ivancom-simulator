@@ -1,3 +1,4 @@
+// Force rebuild
 import React, { useState } from 'react';
 
 // ... (весь ваш код сценаріїв залишається тут, я його скоротив для зручності)
