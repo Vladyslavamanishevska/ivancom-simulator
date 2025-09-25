@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
-const SCRIPT_URL = process.env.REACT_APP_SCRIPT_URL;
-
+const SCRIPT_URL = '/.netlify/functions/analyze';
 function App() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
