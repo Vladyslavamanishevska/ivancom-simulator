@@ -1,7 +1,6 @@
 const fetch = require('node-fetch');
 
 exports.handler = async function (event, context) {
-  // Перевіряємо, чи це CORS-запит, і одразу даємо дозвіл
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -15,8 +14,8 @@ exports.handler = async function (event, context) {
 
   try {
     const data = JSON.parse(event.body);
-    const { name, answer, scenario } = data;
-    const { title, objection, idealAnswer } = scenario;
+    const { answer, scenario } = data;
+    const { objection, idealAnswer } = scenario;
 
     const prompt = `
       Ти - досвідчений бізнес-тренер, який спеціалізується на навчанні менеджерів з клієнтського сервісу в логістичній компанії IVANCOM.
@@ -35,14 +34,14 @@ exports.handler = async function (event, context) {
       Надай відповідь у форматі JSON українською мовою. Структура має бути такою:
       {
         "score": (оцінка від 1 до 10, де 10 - ідеально),
-        "strengths": "(Детально опиши, що менеджеру вдалося найкраще, посилаючись на критерії вище. Наприклад: 'Чудово, що ви почали з фрази..., це демонструє високий рівень емпатії.')",
-        "areasForImprovement": "(Детально і тактовно поясни, що можна було б зробити краще. Наприклад: 'Наступного разу спробуйте одразу запропонувати конкретний крок, наприклад..., це додасть вашій відповіді конструктиву.')"
+        "strengths": "(Детально опиши, що менеджеру вдалося найкраще, посилаючись на критерії вище.)",
+        "areasForImprovement": "(Детально і тактовно поясни, що можна було б зробити краще.)"
       }
     `;
 
     const apiKey = process.env.GEMINI_API_KEY;
-    // ОСЬ ОНОВЛЕНИЙ РЯДОК
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+    // ОСЬ ФІНАЛЬНА, ПРАВИЛЬНА АДРЕСА
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`;
 
     const requestBody = { contents: [{ parts: [{ text: prompt }] }] };
 
@@ -53,7 +52,6 @@ exports.handler = async function (event, context) {
     });
 
     if (!apiResponse.ok) {
-      // Спробуємо отримати більше деталей про помилку від Google
       const errorBody = await apiResponse.text();
       throw new Error(`Google API Error: ${apiResponse.statusText}. Details: ${errorBody}`);
     }
