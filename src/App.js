@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 // ... (весь ваш код сценаріїв залишається тут, я його скоротив для зручності)
 const scenarios = [
