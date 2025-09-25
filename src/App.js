@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 // ВАЖЛИВО! Переконайтесь, що тут ваше правильне посилання
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpZtNtsNuYdFPPbFmGFIzUz9uQCWFWF6yULhAj5xwRmIarBrtLBQ_9EiwgTeqdyTQz/exec";
+const SCRIPT_URL = process.env.REACT_APP_SCRIPT_URL;
 
 // --- Компонент для вводу ПІБ ---
 const Login = ({ userName, setUserName, onLogin }) => (
