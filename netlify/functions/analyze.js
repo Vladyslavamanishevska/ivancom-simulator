@@ -40,7 +40,7 @@ exports.handler = async function (event, context) {
     `;
 
     const apiKey = process.env.GEMINI_API_KEY;
-    // ОСЬ ФІНАЛЬНА, ПРАВИЛЬНА АДРЕСА
+    // ВИПРАВЛЕНА АДРЕСА З v1beta
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`;
 
     const requestBody = { contents: [{ parts: [{ text: prompt }] }] };
