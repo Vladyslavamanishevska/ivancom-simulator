@@ -23,7 +23,7 @@ exports.handler = async function (event, context) {
     `;
 
     const apiKey = process.env.GEMINI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${apiKey}`;
 
     const requestBody = { contents: [{ parts: [{ text: prompt }] }] };
 
