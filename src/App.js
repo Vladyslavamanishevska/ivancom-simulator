@@ -1,7 +1,6 @@
 // Force rebuild
 import React, { useState } from 'react';
 
-// ... (весь ваш код сценаріїв залишається тут, я його скоротив для зручності)
 const scenarios = [
     {
       id: 1,
@@ -15,28 +14,36 @@ const scenarios = [
       objection: "Чому я маю окремо платити за доставку ліків? Я думав, це входить у вартість!",
       idealAnswer: "Я розумію ваше запитання. Доставка медикаментів вимагає спеціальних умов транспортування та температурного режиму, тому ця послуга тарифікується окремо для гарантії їхньої безпеки. Давайте я перевірю, чи можемо ми запропонувати вам оптимальний тариф або пакетну послугу."
     },
-    // ... інші ваші сценарії
+    {
+      id: 3,
+      title: "Пошкоджена упаковка",
+      objection: "Моя посилка прийшла з пошкодженою упаковкою! Що, якщо всередині все розбито?",
+      idealAnswer: "Мені дуже шкода це чути. Безпека ваших відправлень – наш головний пріоритет. Будь ласка, не хвилюйтеся. Давайте разом складемо акт про пошкодження, і я негайно ініціюю перевірку та розкажу вам про варіанти компенсації."
+    },
+    {
+      id: 4,
+      title: "Конкуренти дешевші",
+      objection: "Я знайшов іншу компанію, у якої доставка на 15% дешевша. Чому у вас так дорого?",
+      idealAnswer: "Дякую, що поділилися цією інформацією. Ми дійсно не завжди найдешевші на ринку, оскільки фокусуємося на надійності, швидкості та гарантії збереження вантажу. Давайте я детальніше розкажу, що саме входить у нашу вартість, і, можливо, ми зможемо підібрати для вас вигідніший тарифний план."
+    }
 ];
 
-// НОВА ФУНКЦІЯ ДЛЯ ВІДПРАВКИ ДАНИХ В ТАБЛИЦЮ
+// ОСЬ ОНОВЛЕНА ФУНКЦІЯ
 const sendDataToGoogleSheet = async (data) => {
-  const scriptUrl = process.env.REACT_APP_GOOGLE_SCRIPT_URL;
-  if (!scriptUrl) {
-    console.error("Google Script URL is not defined!");
-    return;
-  }
+  // Тепер ми відправляємо дані нашому "помічнику"
+  const proxyUrl = '/.netlify/functions/report'; 
 
   try {
-    await fetch(scriptUrl, {
+    await fetch(proxyUrl, {
       method: 'POST',
       body: JSON.stringify(data),
       headers: {
         'Content-Type': 'application/json'
       }
     });
-    console.log("Data successfully sent to Google Sheet.");
+    console.log("Data successfully sent to the reporting function.");
   } catch (error) {
-    console.error("Error sending data to Google Sheet:", error);
+    console.error("Error sending data to the reporting function:", error);
   }
 };
 
@@ -72,12 +79,11 @@ const App = () => {
 
       if (result.status === 'success') {
         setAnalysisResult(result.analysis);
-        // ВИКЛИКАЄМО НОВУ ФУНКЦІЮ ПІСЛЯ УСПІШНОГО АНАЛІЗУ
         await sendDataToGoogleSheet({
           name: userName,
           answer: userAnswer,
           scenario: currentScenario,
-          analysis: result.analysis // Додаємо результати аналізу
+          analysis: result.analysis
         });
       } else {
         throw new Error(result.message || 'Unknown error from analysis function');
@@ -112,8 +118,6 @@ const App = () => {
     </div>
   );
 };
-
-// ... (всі інші компоненти: NameInputScreen, ScenarioScreen, LoadingScreen, AnalysisResult залишаються без змін)
 
 const NameInputScreen = ({ onNameSubmit }) => {
     const [name, setName] = useState('');
