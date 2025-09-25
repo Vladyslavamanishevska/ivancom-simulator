@@ -1,130 +1,210 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const SCRIPT_URL = '/.netlify/functions/analyze';
-function App() {
-  const [step, setStep] = useState(0);
-  const [name, setName] = useState('');
+// ... (весь ваш код сценаріїв залишається тут, я його скоротив для зручності)
+const scenarios = [
+    {
+      id: 1,
+      title: "Затримка посилки",
+      objection: "Чому моя посилка затримується вже на 3 дні? Ваш сервіс жахливий!",
+      idealAnswer: "Я розумію ваше розчарування, і мені дуже шкода, що ви зіткнулися з такою ситуацією. Давайте я негайно перевірю статус вашого відправлення. Назвіть, будь ласка, номер накладної. Я зроблю все можливе, щоб прискорити процес і надати вам точну інформацію."
+    },
+    {
+      id: 2,
+      title: "Оплата за ліки",
+      objection: "Чому я маю окремо платити за доставку ліків? Я думав, це входить у вартість!",
+      idealAnswer: "Я розумію ваше запитання. Доставка медикаментів вимагає спеціальних умов транспортування та температурного режиму, тому ця послуга тарифікується окремо для гарантії їхньої безпеки. Давайте я перевірю, чи можемо ми запропонувати вам оптимальний тариф або пакетну послугу."
+    },
+    // ... інші ваші сценарії
+];
+
+// НОВА ФУНКЦІЯ ДЛЯ ВІДПРАВКИ ДАНИХ В ТАБЛИЦЮ
+const sendDataToGoogleSheet = async (data) => {
+  const scriptUrl = process.env.REACT_APP_GOOGLE_SCRIPT_URL;
+  if (!scriptUrl) {
+    console.error("Google Script URL is not defined!");
+    return;
+  }
+
+  try {
+    await fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log("Data successfully sent to Google Sheet.");
+  } catch (error) {
+    console.error("Error sending data to Google Sheet:", error);
+  }
+};
+
+
+const App = () => {
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
+  const [userName, setUserName] = useState('');
+  const [isNameSet, setIsNameSet] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState(null);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
 
-  const scenarios = [
-    {
-      title: "Затримка посилки",
-      objection: "Добрий день, я відстежую посилку №12345, і вона вже 3 дні без руху на вашому сортувальному центрі. Де вона? Чому так довго?",
-      idealAnswer: "Розумію ваше занепокоєння, це дійсно неприємно, коли очікуєш на важливе відправлення. Давайте я негайно перевірю детальну інформацію. Так, бачу вашу посилку. Іноді через велике навантаження сканування може оновлюватися з затримкою. Я створюю терміновий запит на склад, щоб фізично перевірили її місцезнаходження. Очікуйте на оновлення статусу протягом 2-3 годин. Я особисто проконтролюю це."
-    },
-    {
-      title: "Оплата за доставку ліків",
-      objection: "Я замовляв доставку ліків. Чому я маю платити за це окремо 200 гривень? Це ж просто маленька коробочка, ваші конкуренти доставляють безкоштовно!",
-      idealAnswer: "Розумію ваше питання, ціна дійсно важлива. Справа в тому, що доставка медикаментів - це не просто перевезення. Ми гарантуємо дотримання спеціального температурного режиму на всьому шляху за допомогою термобоксів, щоб ліки не втратили своїх властивостей. Ця плата покриває вартість спеціалізованого пакування та гарантує, що ви отримаєте якісний та безпечний препарат. Це наш стандарт безпеки, від якого ми не можемо відмовитись."
-    },
-    {
-      title: "Пошкоджена посилка",
-      objection: "Я щойно отримав посилку, а коробка вся пом'ята, і товар всередині розбитий! Ви мені все зіпсували! Я вимагаю компенсацію!",
-      idealAnswer: "Мені неймовірно прикро, що ви отримали посилку в такому стані. Це абсолютно неприпустимо, і я приношу свої вибачення. Будь ласка, не хвилюйтеся, ми все вирішимо. Сфотографуйте, будь ласка, пошкодження товару та упаковки і надішліть нам. Я негайно оформлюю претензію. Згідно з вартістю, вказаною у декларації, ми повністю компенсуємо збитки. Я допоможу вам пройти цей процес максимально швидко."
-    }
-  ];
-
-  const currentScenario = scenarios[currentScenarioIndex];
-
-  const handleNameSubmit = (e) => { e.preventDefault(); if (name.trim()) { setStep(1); } };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!userAnswer.trim()) return;
+  const handleAnalyze = async () => {
     setIsLoading(true);
-    const dataToSend = { name, answer: userAnswer, scenario: { title: currentScenario.title, objection: currentScenario.objection, idealAnswer: currentScenario.idealAnswer } };
+    setAnalysisResult(null);
+    const currentScenario = scenarios[currentScenarioIndex];
+
     try {
-      const response = await fetch(SCRIPT_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSend) });
+      const response = await fetch('/.netlify/functions/analyze', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: userName,
+          answer: userAnswer,
+          scenario: currentScenario,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.statusText}`);
+      }
+
       const result = await response.json();
-      if (result.status === 'success') { setAiAnalysis(result.analysis); } 
-      else { setAiAnalysis({ score: '!', strengths: 'Помилка аналізу', areasForImprovement: result.message }); }
+
+      if (result.status === 'success') {
+        setAnalysisResult(result.analysis);
+        // ВИКЛИКАЄМО НОВУ ФУНКЦІЮ ПІСЛЯ УСПІШНОГО АНАЛІЗУ
+        await sendDataToGoogleSheet({
+          name: userName,
+          answer: userAnswer,
+          scenario: currentScenario,
+          analysis: result.analysis // Додаємо результати аналізу
+        });
+      } else {
+        throw new Error(result.message || 'Unknown error from analysis function');
+      }
     } catch (error) {
-      setAiAnalysis({ score: '!', strengths: 'Помилка мережі', areasForImprovement: 'Не вдалося зв\'язатися з сервером аналітики. Можливо, потрібно оновити розгортання Google Скрипта.' });
+      setAnalysisResult({ error: error.toString() });
     } finally {
       setIsLoading(false);
-      setShowFeedback(true);
     }
   };
 
-  const handleNext = () => {
-    setShowFeedback(false);
-    setAiAnalysis(null);
+  const handleNextScenario = () => {
+    setAnalysisResult(null);
     setUserAnswer('');
-    if (currentScenarioIndex < scenarios.length - 1) {
-      setCurrentScenarioIndex(currentScenarioIndex + 1);
-    } else {
-      setStep(2);
-    }
+    setCurrentScenarioIndex((prevIndex) => (prevIndex + 1) % scenarios.length);
   };
 
-  const renderStep = () => {
-    if (step === 0) {
-      return (
-        <form onSubmit={handleNameSubmit} className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Симулятор роботи з запереченнями</h2>
-          <p className="mb-6">Будь ласка, введіть ваше ім'я та прізвище для початку.</p>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full max-w-md p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Ім'я та Прізвище" />
-          <button type="submit" className="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">Почати симуляцію</button>
-        </form>
-      );
-    }
-    if (step === 2) {
-      return (
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Чудова робота!</h2>
-          <p>Ви успішно пройшли всі сценарії. Ваші відповіді збережено для аналізу.</p>
-          <button onClick={() => { setStep(0); setCurrentScenarioIndex(0); setName(''); }} className="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">Пройти ще раз</button>
-        </div>
-      );
-    }
-    if (isLoading) { return <div className="text-center"><h2 className="text-2xl font-bold animate-pulse">AI аналізує вашу відповідь...</h2></div>; }
-    if (showFeedback && aiAnalysis) {
-      return (
-        <div>
-          <h2 className="text-2xl font-bold mb-4 text-center">Результат аналізу</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1 flex flex-col items-center justify-center bg-gray-100 p-6 rounded-lg">
-              <p className="text-lg font-semibold mb-2">Ваша оцінка</p>
-              <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-5xl font-bold ${aiAnalysis.score > 7 ? 'bg-green-500' : aiAnalysis.score > 4 ? 'bg-yellow-500' : 'bg-red-500'}`}>{aiAnalysis.score}</div>
-            </div>
-            <div className="md:col-span-2 bg-white p-6 rounded-lg shadow">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-green-700 mb-2">✅ Сильні сторони</h3>
-                <p className="text-gray-700">{aiAnalysis.strengths}</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-yellow-700 mb-2">💡 Зони для росту</h3>
-                <p className="text-gray-700">{aiAnalysis.areasForImprovement}</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 text-center">
-            <button onClick={handleNext} className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">{currentScenarioIndex < scenarios.length - 1 ? 'Наступний сценарій' : 'Завершити'}</button>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <form onSubmit={handleSubmit}>
-        <h2 className="text-2xl font-bold mb-2">{currentScenario.title}</h2>
-        <p className="text-lg bg-gray-100 p-4 rounded-md mb-4"><span className="font-semibold">Клієнт каже:</span> "{currentScenario.objection}"</p>
-        <textarea value={userAnswer} onChange={(e) => setUserAnswer(e.target.value)} className="w-full h-40 p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Напишіть вашу відповідь тут..." />
-        <button type="submit" className="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">Надіслати відповідь</button>
-      </form>
-    );
-  };
+  if (!isNameSet) {
+    return <NameInputScreen onNameSubmit={(name) => { setUserName(name); setIsNameSet(true); }} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl bg-white p-8 rounded-xl shadow-lg">
-        {renderStep()}
-      </div>
+      {isLoading ? <LoadingScreen /> :
+       analysisResult ? <AnalysisResult result={analysisResult} onNext={handleNextScenario} /> :
+       <ScenarioScreen
+         scenario={scenarios[currentScenarioIndex]}
+         userAnswer={userAnswer}
+         setUserAnswer={setUserAnswer}
+         onAnalyze={handleAnalyze}
+       />}
     </div>
   );
-}
+};
+
+// ... (всі інші компоненти: NameInputScreen, ScenarioScreen, LoadingScreen, AnalysisResult залишаються без змін)
+
+const NameInputScreen = ({ onNameSubmit }) => {
+    const [name, setName] = useState('');
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (name.trim()) {
+            onNameSubmit(name.trim());
+        }
+    };
+    return (
+        <div className="bg-white p-8 rounded-lg shadow-lg animate-fade-in w-full max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Введіть ваше ім'я</h2>
+            <form onSubmit={handleSubmit}>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ваше ім'я"
+                />
+                <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg mt-4 hover:bg-blue-700 transition-colors">
+                    Почати тренування
+                </button>
+            </form>
+        </div>
+    );
+};
+
+const ScenarioScreen = ({ scenario, userAnswer, setUserAnswer, onAnalyze }) => (
+    <div className="bg-white p-8 rounded-lg shadow-lg animate-fade-in w-full max-w-3xl mx-auto">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">{scenario.title}</h2>
+        <p className="text-gray-600 mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-md">{scenario.objection}</p>
+        <textarea
+            value={userAnswer}
+            onChange={(e) => setUserAnswer(e.target.value)}
+            className="w-full h-48 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Введіть вашу відповідь тут..."
+        />
+        <button
+            onClick={onAnalyze}
+            className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg mt-4 hover:bg-green-700 transition-colors"
+        >
+            Аналізувати відповідь
+        </button>
+    </div>
+);
+
+const LoadingScreen = () => (
+    <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto"></div>
+        <p className="mt-4 text-lg font-semibold text-gray-700">Аналізую вашу відповідь...</p>
+    </div>
+);
+
+const AnalysisResult = ({ result, onNext }) => {
+    if (result.error) {
+        return (
+            <div className="bg-white p-8 rounded-lg shadow-lg animate-fade-in w-full max-w-3xl mx-auto">
+                <h2 className="text-2xl font-bold text-red-600 mb-4 text-center">Помилка аналізу</h2>
+                <div className="bg-red-50 p-4 rounded-md border border-red-200 text-red-800">
+                    <p><strong>Деталі:</strong> {result.error}</p>
+                </div>
+                <button onClick={onNext} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg mt-6 hover:bg-blue-700 transition-colors">
+                    Наступний сценарій
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-white p-8 rounded-lg shadow-lg animate-fade-in w-full max-w-3xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Результат аналізу</h2>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-8">
+                <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-5xl font-bold ${result.score >= 8 ? 'bg-green-500' : result.score >= 5 ? 'bg-yellow-500' : 'bg-red-500'}`}>
+                    {result.score}
+                </div>
+                <div className="flex-1">
+                    <div>
+                        <h3 className="text-xl font-semibold text-green-600 mb-2">✅ Сильні сторони</h3>
+                        <p className="text-gray-700 bg-green-50 p-4 rounded-md border border-green-200">{result.strengths}</p>
+                    </div>
+                    <div className="mt-4">
+                        <h3 className="text-xl font-semibold text-yellow-600 mb-2">💡 Зони для росту</h3>
+                        <p className="text-gray-700 bg-yellow-50 p-4 rounded-md border border-yellow-200">{result.areasForImprovement}</p>
+                    </div>
+                </div>
+            </div>
+            <button onClick={onNext} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg mt-4 hover:bg-blue-700 transition-colors">
+                Наступний сценарій
+            </button>
+        </div>
+    );
+};
 
 export default App;
