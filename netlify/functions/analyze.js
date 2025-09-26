@@ -1,7 +1,7 @@
+// Final update
 const fetch = require('node-fetch');
 
 exports.handler = async function (event, context) {
-  // ... (весь код з логуванням залишається таким самим)
   console.log("--- analyze function started ---");
 
   if (event.httpMethod === 'OPTIONS') {
@@ -46,9 +46,9 @@ exports.handler = async function (event, context) {
       The response must be in Ukrainian.
     `;
 
-    // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ ---
-    // Ми використовуємо просту, базову назву моделі, як просить Google
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+    // --- ФІНАЛЬНЕ, ПРАВИЛЬНЕ ВИПРАВЛЕННЯ ---
+    // Ми використовуємо назву моделі, яку нам підказав сам Google у вашому кабінеті
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     console.log("Sending request to Google AI...");
     const response = await fetch(apiUrl, {
