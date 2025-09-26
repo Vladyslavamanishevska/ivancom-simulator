@@ -1,6 +1,7 @@
 const fetch = require('node-fetch');
 
 exports.handler = async function (event, context) {
+  // ... (весь код з логуванням залишається таким самим)
   console.log("--- analyze function started ---");
 
   if (event.httpMethod === 'OPTIONS') {
@@ -46,8 +47,8 @@ exports.handler = async function (event, context) {
     `;
 
     // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ ---
-    // Ми використовуємо найстабільнішу і найпоширенішу модель Google AI
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${apiKey}`;
+    // Ми використовуємо просту, базову назву моделі, як просить Google
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
     console.log("Sending request to Google AI...");
     const response = await fetch(apiUrl, {
