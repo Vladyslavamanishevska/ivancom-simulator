@@ -2,7 +2,3 @@
   command = "npm run build"
   publish = "build"
   functions = "netlify/functions"
-
-# Цей блок дає дозвіл на встановлення інструментів для помічників
-[[plugins]]
-  package = "@netlify/plugin-functions-install-core"
