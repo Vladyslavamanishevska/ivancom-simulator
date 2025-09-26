@@ -1,7 +1,10 @@
 const fetch = require('node-fetch');
 
 exports.handler = async function (event, context) {
+  console.log("--- analyze function started ---");
+
   if (event.httpMethod === 'OPTIONS') {
+    console.log("Handling OPTIONS preflight request.");
     return {
       statusCode: 200,
       headers: {
@@ -13,65 +16,70 @@ exports.handler = async function (event, context) {
   }
 
   try {
-    const data = JSON.parse(event.body);
-    const { answer, scenario } = data;
-    const { objection, idealAnswer } = scenario;
+    console.log("Checking for GEMINI_API_KEY...");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("FATAL: GEMINI_API_KEY is not set in environment variables.");
+      throw new Error("Server configuration error: API key is missing.");
+    }
+    console.log("GEMINI_API_KEY found.");
 
-    // ФІНАЛЬНИЙ, НАЙБІЛЬШ СУВОРИЙ ПРОМПТ
+    console.log("Parsing request body...");
+    const body = JSON.parse(event.body);
+    const { name, answer, scenario } = body;
+    console.log(`Received data for user: ${name}`);
+
     const prompt = `
-      **Твоя Роль:** Ти - API, яке повертає JSON.
-      **Твоє Завдання:** Оцінити відповідь менеджера на заперечення клієнта для компанії IVANCOM.
+      You are an expert coach for logistics managers. Your task is to analyze a manager's response to a client's objection.
+      The client's objection was: "${scenario.objection}"
+      The manager's response was: "${answer}"
+      The ideal response for this scenario is: "${scenario.idealAnswer}"
 
-      --- ДАНІ ДЛЯ АНАЛІЗУ ---
-      **Ситуація (Заперечення клієнта):**
-      "${objection}"
-
-      **Еталонна відповідь (для твого розуміння):**
-      "${idealAnswer}"
-
-      **Відповідь менеджера (оціни саме її):**
-      "${answer}"
-      --- КІНЕЦЬ ДАНИХ ---
-
-      Проаналізуй **"Відповідь менеджера"** за критеріями (емпатія, вирішення, тон, знання).
-      **ВАЖЛИВО:** Твоя відповідь має бути ТІЛЬКИ валідним JSON-об'єктом. Без жодних пояснень, привітань чи тексту до або після. Починай відповідь одразу з символу '{'.
-      Структура JSON: { "score": число, "strengths": "рядок", "areasForImprovement": "рядок" }.
+      Analyze the manager's response based on the following criteria: empathy, problem-solving, professionalism, and clarity.
+      Provide the analysis in a JSON format with the following structure:
+      {
+        "score": <an integer score from 1 to 10, where 1 is very poor and 10 is excellent>,
+        "strengths": "<a string explaining the strong points of the manager's response>",
+        "areasForImprovement": "<a string with constructive feedback on what could be improved>"
+      }
+      The response must be in Ukrainian.
     `;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
-    const requestBody = { contents: [{ parts: [{ text: prompt }] }] };
-
-    const apiResponse = await fetch(apiUrl, {
+    console.log("Sending request to Google AI...");
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
     });
+    console.log(`Google AI response status: ${response.status}`);
 
-    if (!apiResponse.ok) {
-      const errorBody = await apiResponse.text();
-      throw new Error(`Google API Error: ${apiResponse.statusText}. Details: ${errorBody}`);
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("Error from Google AI API:", errorBody);
+      throw new Error(`Google AI API error: ${response.statusText}`);
     }
 
-    const aiData = await apiResponse.json();
-    const rawResponse = aiData.candidates[0].content.parts[0].text;
+    const data = await response.json();
+    console.log("Successfully received response from Google AI.");
 
-    // ПОКРАЩЕНИЙ, "РОЗУМНИЙ" ПАРСИНГ
-    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("AI response did not contain a valid JSON object. Response was: " + rawResponse);
-    }
-    const analysisJsonString = jsonMatch[0];
-    const analysisObject = JSON.parse(analysisJsonString);
+    const analysisText = data.candidates[0].content.parts[0].text;
+    const analysisJson = JSON.parse(analysisText);
+    console.log("Successfully parsed AI analysis.");
 
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ status: 'success', analysis: analysisObject }),
+      body: JSON.stringify({ status: 'success', analysis: analysisJson }),
     };
 
   } catch (error) {
+    console.error("--- ERROR in analyze function ---");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     return {
       statusCode: 500,
       headers: { 'Access-Control-Allow-Origin': '*' },
