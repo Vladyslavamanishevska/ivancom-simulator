@@ -45,9 +45,9 @@ exports.handler = async function (event, context) {
       The response must be in Ukrainian.
     `;
 
-    // --- ОСЬ ВИПРАВЛЕННЯ ---
-    // Ми оновили адресу до найновішої, стабільної версії моделі Google AI
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+    // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ ---
+    // Ми використовуємо найстабільнішу і найпоширенішу модель Google AI
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${apiKey}`;
 
     console.log("Sending request to Google AI...");
     const response = await fetch(apiUrl, {
