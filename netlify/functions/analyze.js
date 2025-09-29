@@ -1,11 +1,10 @@
-// Final update
+// Final update with response cleaning
 const fetch = require('node-fetch');
 
 exports.handler = async function (event, context) {
   console.log("--- analyze function started ---");
 
   if (event.httpMethod === 'OPTIONS') {
-    console.log("Handling OPTIONS preflight request.");
     return {
       statusCode: 200,
       headers: {
@@ -19,10 +18,7 @@ exports.handler = async function (event, context) {
   try {
     console.log("Checking for GEMINI_API_KEY...");
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("FATAL: GEMINI_API_KEY is not set in environment variables.");
-      throw new Error("Server configuration error: API key is missing.");
-    }
+    if (!apiKey) { throw new Error("Server configuration error: API key is missing."); }
     console.log("GEMINI_API_KEY found.");
 
     console.log("Parsing request body...");
@@ -46,8 +42,6 @@ exports.handler = async function (event, context) {
       The response must be in Ukrainian.
     `;
 
-    // --- ФІНАЛЬНЕ, ПРАВИЛЬНЕ ВИПРАВЛЕННЯ ---
-    // Ми використовуємо назву моделі, яку нам підказав сам Google у вашому кабінеті
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     console.log("Sending request to Google AI...");
@@ -69,7 +63,16 @@ exports.handler = async function (event, context) {
     const data = await response.json();
     console.log("Successfully received response from Google AI.");
 
-    const analysisText = data.candidates[0].content.parts[0].text;
+    let analysisText = data.candidates[0].content.parts[0].text;
+    
+    // --- ФІНАЛЬНЕ ВИПРАВЛЛЕННЯ ---
+    // Очищуємо відповідь від зайвих символів (```json ... ```) перед парсингом
+    const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      analysisText = jsonMatch[0];
+    }
+    
+    console.log("Attempting to parse cleaned JSON...");
     const analysisJson = JSON.parse(analysisText);
     console.log("Successfully parsed AI analysis.");
 
