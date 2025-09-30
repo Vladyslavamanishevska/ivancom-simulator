@@ -1,4 +1,4 @@
-// Final update with response cleaning
+// Final version with robust JSON parsing
 const fetch = require('node-fetch');
 
 exports.handler = async function (event, context) {
@@ -39,7 +39,7 @@ exports.handler = async function (event, context) {
         "strengths": "<a string explaining the strong points of the manager's response>",
         "areasForImprovement": "<a string with constructive feedback on what could be improved>"
       }
-      The response must be in Ukrainian.
+      The response must be in Ukrainian. IMPORTANT: Your entire response must be ONLY the JSON object, without any extra text, explanations, or markdown formatting like \`\`\`json.
     `;
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
@@ -65,15 +65,26 @@ exports.handler = async function (event, context) {
 
     let analysisText = data.candidates[0].content.parts[0].text;
     
-    // --- ФІНАЛЬНЕ ВИПРАВЛЛЕННЯ ---
-    // Очищуємо відповідь від зайвих символів (```json ... ```) перед парсингом
-    const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      analysisText = jsonMatch[0];
+    // --- БРОНЬОВАНИЙ ПАРСЕР ---
+    // Цей блок коду "очищує" відповідь від усього зайвого
+    let analysisJson;
+    try {
+        // Спочатку намагаємося розпарсити як є
+        analysisJson = JSON.parse(analysisText);
+    } catch (e) {
+        console.warn("Initial JSON.parse failed. Attempting to clean the string...");
+        // Якщо не вийшло, шукаємо блок JSON всередині тексту
+        const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            analysisText = jsonMatch[0];
+            // І намагаємося розпарсити ще раз
+            analysisJson = JSON.parse(analysisText); 
+        } else {
+            // Якщо і так не вийшло, то відповідь справді невалідна
+            throw new Error("AI returned a non-JSON response.");
+        }
     }
     
-    console.log("Attempting to parse cleaned JSON...");
-    const analysisJson = JSON.parse(analysisText);
     console.log("Successfully parsed AI analysis.");
 
     return {
